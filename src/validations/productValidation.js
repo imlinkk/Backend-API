@@ -1,11 +1,11 @@
-const { z, objectIdSchema, paginationQuerySchema } = require("./commonValidation");
+const { z, objectIdSchema, paginationQuerySchema, numericIdSchema } = require("./commonValidation");
 
 const productBody = z.object({
   name: z.string().trim().min(2).max(150),
   description: z.string().trim().min(10).max(2000),
   price: z.coerce.number().min(0),
   stock: z.coerce.number().int().min(0),
-  category: objectIdSchema,
+  category: objectIdSchema.or(numericIdSchema),
   images: z.array(z.string().trim().url()).optional().default([]),
 });
 
@@ -20,7 +20,7 @@ const updateProductSchema = z.object({
     message: "At least one field is required",
   }),
   params: z.object({
-    id: objectIdSchema,
+    id: objectIdSchema.or(numericIdSchema),
   }),
   query: z.object({}).default({}),
 });
@@ -28,7 +28,7 @@ const updateProductSchema = z.object({
 const productIdSchema = z.object({
   body: z.object({}).default({}),
   params: z.object({
-    id: objectIdSchema,
+    id: objectIdSchema.or(numericIdSchema),
   }),
   query: z.object({}).default({}),
 });
@@ -37,7 +37,7 @@ const productQuerySchema = z.object({
   body: z.object({}).default({}),
   params: z.object({}).default({}),
   query: paginationQuerySchema.extend({
-    category: objectIdSchema.optional(),
+    category: objectIdSchema.or(numericIdSchema).optional(),
     minPrice: z.coerce.number().min(0).optional(),
     maxPrice: z.coerce.number().min(0).optional(),
     search: z.string().trim().optional(),
@@ -50,7 +50,7 @@ const createReviewSchema = z.object({
     comment: z.string().trim().min(3).max(1000),
   }),
   params: z.object({
-    id: objectIdSchema,
+    id: objectIdSchema.or(numericIdSchema),
   }),
   query: z.object({}).default({}),
 });

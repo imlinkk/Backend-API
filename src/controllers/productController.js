@@ -1,15 +1,30 @@
 const Cart = require("../models/Cart");
-const Category = require("../models/Category");
 const Product = require("../models/Product");
 const Review = require("../models/Review");
 const AppError = require("../utils/AppError");
 const asyncHandler = require("../utils/asyncHandler");
-const { buildPagination, buildProductFilters } = require("../utils/product");
+const {
+  buildPagination,
+  buildProductFilters,
+  findCategoryByIdentifier,
+} = require("../utils/product");
 const { recalculateProductRating } = require("../utils/review");
 const { sendSuccess } = require("../utils/response");
 
+const findProductByIdentifier = (id) => {
+  const stringId = String(id);
+  const productId =
+    typeof id === "number" || (!/^[0-9a-fA-F]{24}$/.test(stringId) && /^\d+$/.test(stringId))
+      ? Number(id)
+      : id;
+
+  return typeof productId === "number"
+    ? Product.findOne({ shortId: productId })
+    : Product.findById(productId);
+};
+
 const getProducts = asyncHandler(async (req, res) => {
-  const filter = buildProductFilters(req.query);
+  const filter = await buildProductFilters(req.query);
   const { page, limit, skip } = buildPagination(req.query);
 
   const [products, totalItems] = await Promise.all([
@@ -40,7 +55,7 @@ const getProducts = asyncHandler(async (req, res) => {
 });
 
 const getProductById = asyncHandler(async (req, res) => {
-  const product = await Product.findById(req.params.id).populate("category");
+  const product = await findProductByIdentifier(req.params.id).populate("category");
   if (!product) {
     throw new AppError(404, "Product not found");
   }
@@ -51,12 +66,15 @@ const getProductById = asyncHandler(async (req, res) => {
 });
 
 const createProduct = asyncHandler(async (req, res) => {
-  const category = await Category.findById(req.body.category);
+  const category = await findCategoryByIdentifier(req.body.category);
   if (!category) {
     throw new AppError(404, "Category not found");
   }
 
-  const product = await Product.create(req.body);
+  const product = await Product.create({
+    ...req.body,
+    category: category._id,
+  });
   await product.populate("category");
 
   return sendSuccess(res, 201, "Product created successfully", {
@@ -65,19 +83,22 @@ const createProduct = asyncHandler(async (req, res) => {
 });
 
 const updateProduct = asyncHandler(async (req, res) => {
-  const product = await Product.findById(req.params.id);
+  const product = await findProductByIdentifier(req.params.id);
   if (!product) {
     throw new AppError(404, "Product not found");
   }
 
-  if (req.body.category) {
-    const category = await Category.findById(req.body.category);
+  const updateData = { ...req.body };
+
+  if (req.body.category !== undefined) {
+    const category = await findCategoryByIdentifier(req.body.category);
     if (!category) {
       throw new AppError(404, "Category not found");
     }
+    updateData.category = category._id;
   }
 
-  Object.assign(product, req.body);
+  Object.assign(product, updateData);
   await product.save();
   await product.populate("category");
 
@@ -87,7 +108,7 @@ const updateProduct = asyncHandler(async (req, res) => {
 });
 
 const deleteProduct = asyncHandler(async (req, res) => {
-  const product = await Product.findById(req.params.id);
+  const product = await findProductByIdentifier(req.params.id);
   if (!product) {
     throw new AppError(404, "Product not found");
   }
@@ -102,14 +123,14 @@ const deleteProduct = asyncHandler(async (req, res) => {
 });
 
 const createReview = asyncHandler(async (req, res) => {
-  const product = await Product.findById(req.params.id);
+  const product = await findProductByIdentifier(req.params.id);
   if (!product) {
     throw new AppError(404, "Product not found");
   }
 
   const existingReview = await Review.findOne({
     user: req.user._id,
-    product: req.params.id,
+    product: product._id,
   });
 
   if (existingReview) {
@@ -118,12 +139,12 @@ const createReview = asyncHandler(async (req, res) => {
 
   const review = await Review.create({
     user: req.user._id,
-    product: req.params.id,
+    product: product._id,
     rating: req.body.rating,
     comment: req.body.comment,
   });
 
-  await recalculateProductRating(req.params.id);
+  await recalculateProductRating(product._id);
   await review.populate("user", "name email role");
 
   return sendSuccess(res, 201, "Review created successfully", {
@@ -132,12 +153,12 @@ const createReview = asyncHandler(async (req, res) => {
 });
 
 const getProductReviews = asyncHandler(async (req, res) => {
-  const product = await Product.findById(req.params.id);
+  const product = await findProductByIdentifier(req.params.id);
   if (!product) {
     throw new AppError(404, "Product not found");
   }
 
-  const reviews = await Review.find({ product: req.params.id })
+  const reviews = await Review.find({ product: product._id })
     .populate("user", "name email role")
     .sort({ createdAt: -1 });
 

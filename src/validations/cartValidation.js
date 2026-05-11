@@ -1,7 +1,7 @@
-const { z, objectIdSchema } = require("./commonValidation");
+const { z, objectIdSchema, numericIdSchema } = require("./commonValidation");
 
 const cartItemBody = z.object({
-  productId: objectIdSchema,
+  productId: objectIdSchema.or(numericIdSchema),
   quantity: z.coerce.number().int().min(1),
 });
 
@@ -20,7 +20,7 @@ const updateCartSchema = z.object({
 const removeCartItemSchema = z.object({
   body: z.object({}).default({}),
   params: z.object({
-    productId: objectIdSchema,
+    productId: objectIdSchema.or(numericIdSchema),
   }),
   query: z.object({}).default({}),
 });

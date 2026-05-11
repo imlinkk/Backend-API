@@ -30,7 +30,9 @@ const router = express.Router();
  *       - in: query
  *         name: category
  *         schema:
- *           type: string
+ *           oneOf:
+ *             - type: integer
+ *             - type: string
  *       - in: query
  *         name: minPrice
  *         schema:
@@ -56,7 +58,7 @@ const router = express.Router();
  *         description: Product list
  *   post:
  *     tags: [Products]
- *     summary: Create a product
+ *     summary: Create a product (admin)
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -76,7 +78,9 @@ const router = express.Router();
  *               stock:
  *                 type: integer
  *               category:
- *                 type: string
+ *                 oneOf:
+ *                   - type: integer
+ *                   - type: string
  *               images:
  *                 type: array
  *                 items:
@@ -84,6 +88,10 @@ const router = express.Router();
  *     responses:
  *       201:
  *         description: Product created
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
  */
 router.get("/", validate(productQuerySchema), getProducts);
 router.post("/", protect, adminOnly, validate(createProductSchema), createProduct);
@@ -98,8 +106,13 @@ router.post("/", protect, adminOnly, validate(createProductSchema), createProduc
  *       - in: path
  *         name: id
  *         required: true
+ *         description: Numeric product id is preferred, for example 1.
  *         schema:
- *           type: string
+ *           oneOf:
+ *             - type: integer
+ *               example: 1
+ *             - type: string
+ *               example: "6658ca5ffbd0af6d9bf2f111"
  *     responses:
  *       200:
  *         description: Product found
@@ -107,15 +120,20 @@ router.post("/", protect, adminOnly, validate(createProductSchema), createProduc
  *         description: Product not found
  *   put:
  *     tags: [Products]
- *     summary: Update a product
+ *     summary: Update a product (admin)
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
+ *         description: Numeric product id is preferred, for example 1.
  *         schema:
- *           type: string
+ *           oneOf:
+ *             - type: integer
+ *               example: 1
+ *             - type: string
+ *               example: "6658ca5ffbd0af6d9bf2f111"
  *     requestBody:
  *       required: true
  *       content:
@@ -125,20 +143,33 @@ router.post("/", protect, adminOnly, validate(createProductSchema), createProduc
  *     responses:
  *       200:
  *         description: Product updated
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
  *   delete:
  *     tags: [Products]
- *     summary: Delete a product
+ *     summary: Delete a product (admin)
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
+ *         description: Numeric product id is preferred, for example 1.
  *         schema:
- *           type: string
+ *           oneOf:
+ *             - type: integer
+ *               example: 1
+ *             - type: string
+ *               example: "6658ca5ffbd0af6d9bf2f111"
  *     responses:
  *       200:
  *         description: Product deleted
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
  */
 router.get("/:id", validate(productIdSchema), getProductById);
 router.put("/:id", protect, adminOnly, validate(updateProductSchema), updateProduct);
@@ -154,8 +185,13 @@ router.delete("/:id", protect, adminOnly, validate(productIdSchema), deleteProdu
  *       - in: path
  *         name: id
  *         required: true
+ *         description: Numeric product id is preferred, for example 1.
  *         schema:
- *           type: string
+ *           oneOf:
+ *             - type: integer
+ *               example: 1
+ *             - type: string
+ *               example: "6658ca5ffbd0af6d9bf2f111"
  *     responses:
  *       200:
  *         description: Reviews fetched
@@ -168,8 +204,13 @@ router.delete("/:id", protect, adminOnly, validate(productIdSchema), deleteProdu
  *       - in: path
  *         name: id
  *         required: true
+ *         description: Numeric product id is preferred, for example 1.
  *         schema:
- *           type: string
+ *           oneOf:
+ *             - type: integer
+ *               example: 1
+ *             - type: string
+ *               example: "6658ca5ffbd0af6d9bf2f111"
  *     requestBody:
  *       required: true
  *       content:

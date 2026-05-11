@@ -41,7 +41,8 @@ const getCart = asyncHandler(async (req, res) => {
 
 const addToCart = asyncHandler(async (req, res) => {
   const { productId, quantity } = req.body;
-  const product = await Product.findById(productId);
+  const pid = /^\d+$/.test(String(productId)) ? Number(productId) : productId;
+  const product = typeof pid === "number" ? await Product.findOne({ shortId: pid }) : await Product.findById(pid);
 
   if (!product) {
     throw new AppError(404, "Product not found");
@@ -52,7 +53,7 @@ const addToCart = asyncHandler(async (req, res) => {
   }
 
   const cart = await getOrCreateCart(req.user._id);
-  const existingItem = cart.items.find((item) => item.product._id.toString() === productId);
+  const existingItem = cart.items.find((item) => item.product._id.equals(product._id) || item.product.shortId === product.shortId);
 
   if (existingItem) {
     const nextQuantity = existingItem.quantity + quantity;
@@ -79,7 +80,8 @@ const addToCart = asyncHandler(async (req, res) => {
 
 const updateCartItem = asyncHandler(async (req, res) => {
   const { productId, quantity } = req.body;
-  const product = await Product.findById(productId);
+  const pid = /^\d+$/.test(String(productId)) ? Number(productId) : productId;
+  const product = typeof pid === "number" ? await Product.findOne({ shortId: pid }) : await Product.findById(pid);
 
   if (!product) {
     throw new AppError(404, "Product not found");
@@ -90,7 +92,7 @@ const updateCartItem = asyncHandler(async (req, res) => {
   }
 
   const cart = await getOrCreateCart(req.user._id);
-  const existingItem = cart.items.find((item) => item.product._id.toString() === productId);
+  const existingItem = cart.items.find((item) => item.product._id.equals(product._id) || item.product.shortId === product.shortId);
 
   if (!existingItem) {
     throw new AppError(404, "Cart item not found");
@@ -111,9 +113,11 @@ const removeCartItem = asyncHandler(async (req, res) => {
   const cart = await getOrCreateCart(req.user._id);
   const initialLength = cart.items.length;
 
-  cart.items = cart.items.filter(
-    (item) => item.product._id.toString() !== req.params.productId
-  );
+  const paramPid = /^\d+$/.test(req.params.productId) ? Number(req.params.productId) : req.params.productId;
+  cart.items = cart.items.filter((item) => {
+    if (typeof paramPid === "number") return item.product.shortId !== paramPid;
+    return item.product._id.toString() !== paramPid;
+  });
 
   if (cart.items.length === initialLength) {
     throw new AppError(404, "Cart item not found");

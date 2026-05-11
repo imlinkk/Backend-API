@@ -29,6 +29,12 @@ const orderItemSchema = new mongoose.Schema(
 
 const orderSchema = new mongoose.Schema(
   {
+    shortId: {
+      type: Number,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -55,7 +61,33 @@ const orderSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: {
+      transform(doc, ret) {
+        if (ret.shortId !== undefined && ret.shortId !== null) {
+          ret.id = ret.shortId;
+          delete ret._id;
+        } else if (ret._id) {
+          ret.id = ret._id.toString();
+        }
+        delete ret.shortId;
+        delete ret.__v;
+        return ret;
+      },
+    },
   }
 );
+
+orderSchema.pre("validate", async function setShortId(next) {
+  if (this.isNew && (this.shortId === undefined || this.shortId === null)) {
+    try {
+      const { getNextSequence } = require("../utils/sequence");
+      this.shortId = await getNextSequence("order");
+    } catch (err) {
+      return next(err);
+    }
+  }
+
+  return next();
+});
 
 module.exports = mongoose.model("Order", orderSchema);

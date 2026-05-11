@@ -1,14 +1,25 @@
 const Cart = require("../../models/Cart");
 const Order = require("../../models/Order");
-const { requireAdmin, requireAuth, validateArgs, objectIdSchema, z } = require("./helpers");
+const {
+  requireAdmin,
+  requireAuth,
+  validateArgs,
+  objectIdSchema,
+  numericIdSchema,
+  z,
+} = require("./helpers");
 const { throwGraphQLError } = require("../../utils/graphql");
+const {
+  findOrderByIdentifier,
+  getStatusTransitionError,
+} = require("../../utils/order");
 
 const orderIdArgsSchema = z.object({
-  id: objectIdSchema,
+  id: objectIdSchema.or(numericIdSchema),
 });
 
 const updateStatusArgsSchema = z.object({
-  id: objectIdSchema,
+  id: objectIdSchema.or(numericIdSchema),
   status: z.enum(["pending", "processing", "shipped", "delivered"]),
 });
 
@@ -30,7 +41,7 @@ const orderResolvers = {
       const user = requireAuth(context);
       const { id } = validateArgs(orderIdArgsSchema, args);
 
-      const order = await Order.findById(id)
+      const order = await findOrderByIdentifier(id)
         .populate("user", "name email role")
         .populate({
           path: "items.product",
@@ -105,13 +116,18 @@ const orderResolvers = {
       requireAdmin(context);
       const data = validateArgs(updateStatusArgsSchema, args);
 
-      const order = await Order.findById(data.id);
+      const order = await findOrderByIdentifier(data.id);
       if (!order) {
         throwGraphQLError("Order not found", "NOT_FOUND", 404);
       }
 
+      const transitionError = getStatusTransitionError(order.status, data.status);
+      if (transitionError) {
+        throwGraphQLError(transitionError, "BAD_USER_INPUT", 400);
+      }
+
       order.status = data.status;
-      if (data.status === "delivered") {
+      if (data.status === "delivered" && !order.deliveredAt) {
         order.deliveredAt = new Date();
       }
 
@@ -124,6 +140,9 @@ const orderResolvers = {
           populate: { path: "category" },
         });
     },
+  },
+  Order: {
+    id: (order) => order.shortId || order._id.toString(),
   },
   OrderItem: {
     subtotal: (item) => Number((item.price * item.quantity).toFixed(2)),

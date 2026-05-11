@@ -1,8 +1,11 @@
 const Cart = require("../../models/Cart");
-const Category = require("../../models/Category");
 const Product = require("../../models/Product");
 const Review = require("../../models/Review");
-const { buildPagination, buildProductFilters } = require("../../utils/product");
+const {
+  buildPagination,
+  buildProductFilters,
+  findCategoryByIdentifier,
+} = require("../../utils/product");
 const { recalculateProductRating } = require("../../utils/review");
 const {
   requireAdmin,
@@ -12,10 +15,11 @@ const {
   productFilterArgSchema,
   z,
 } = require("./helpers");
+const { numericIdSchema } = require("../../validations/commonValidation");
 const { throwGraphQLError } = require("../../utils/graphql");
 
 const productIdArgsSchema = z.object({
-  id: objectIdSchema,
+  id: numericIdSchema,
 });
 
 const createProductArgsSchema = z.object({
@@ -23,18 +27,18 @@ const createProductArgsSchema = z.object({
   description: z.string().trim().min(10).max(2000),
   price: z.number().min(0),
   stock: z.number().int().min(0),
-  category: objectIdSchema,
+  category: objectIdSchema.or(numericIdSchema),
   images: z.array(z.string().trim().url()).optional().default([]),
 });
 
 const updateProductArgsSchema = z
   .object({
-    id: objectIdSchema,
+    id: numericIdSchema,
     name: z.string().trim().min(2).max(150).optional(),
     description: z.string().trim().min(10).max(2000).optional(),
     price: z.number().min(0).optional(),
     stock: z.number().int().min(0).optional(),
-    category: objectIdSchema.optional(),
+    category: objectIdSchema.or(numericIdSchema).optional(),
     images: z.array(z.string().trim().url()).optional(),
   })
   .refine(
@@ -51,20 +55,20 @@ const updateProductArgsSchema = z
   );
 
 const createReviewArgsSchema = z.object({
-  productId: objectIdSchema,
+  productId: numericIdSchema,
   rating: z.number().int().min(1).max(5),
   comment: z.string().trim().min(3).max(1000),
 });
 
 const productReviewsArgsSchema = z.object({
-  productId: objectIdSchema,
+  productId: numericIdSchema,
 });
 
 const productResolvers = {
   Query: {
     products: async (parent, args) => {
       const data = validateArgs(productFilterArgSchema, args);
-      const filter = buildProductFilters(data.filter);
+      const filter = await buildProductFilters(data.filter);
       const { page, limit, skip } = buildPagination(data.pagination);
 
       const [items, totalItems] = await Promise.all([
@@ -90,7 +94,7 @@ const productResolvers = {
     },
     product: async (parent, args) => {
       const { id } = validateArgs(productIdArgsSchema, args);
-      const product = await Product.findById(id).populate("category");
+      const product = await Product.findOne({ shortId: id }).populate("category");
 
       if (!product) {
         throwGraphQLError("Product not found", "NOT_FOUND", 404);
@@ -100,13 +104,13 @@ const productResolvers = {
     },
     productReviews: async (parent, args) => {
       const { productId } = validateArgs(productReviewsArgsSchema, args);
-      const product = await Product.findById(productId);
+      const product = await Product.findOne({ shortId: productId });
 
       if (!product) {
         throwGraphQLError("Product not found", "NOT_FOUND", 404);
       }
 
-      return Review.find({ product: productId })
+      return Review.find({ product: product._id })
         .populate("user", "name email role")
         .populate({
           path: "product",
@@ -120,12 +124,15 @@ const productResolvers = {
       requireAdmin(context);
       const data = validateArgs(createProductArgsSchema, args);
 
-      const category = await Category.findById(data.category);
+      const category = await findCategoryByIdentifier(data.category);
       if (!category) {
         throwGraphQLError("Category not found", "NOT_FOUND", 404);
       }
 
-      const product = await Product.create(data);
+      const product = await Product.create({
+        ...data,
+        category: category._id,
+      });
       await product.populate("category");
       return product;
     },
@@ -133,26 +140,28 @@ const productResolvers = {
       requireAdmin(context);
       const data = validateArgs(updateProductArgsSchema, args);
 
-      const product = await Product.findById(data.id);
+      const product = await Product.findOne({ shortId: data.id });
       if (!product) {
         throwGraphQLError("Product not found", "NOT_FOUND", 404);
       }
 
-      if (data.category) {
-        const category = await Category.findById(data.category);
-        if (!category) {
-          throwGraphQLError("Category not found", "NOT_FOUND", 404);
-        }
-      }
-
-      Object.assign(product, {
+      const updateData = {
         ...(data.name !== undefined ? { name: data.name } : {}),
         ...(data.description !== undefined ? { description: data.description } : {}),
         ...(data.price !== undefined ? { price: data.price } : {}),
         ...(data.stock !== undefined ? { stock: data.stock } : {}),
-        ...(data.category !== undefined ? { category: data.category } : {}),
         ...(data.images !== undefined ? { images: data.images } : {}),
-      });
+      };
+
+      if (data.category !== undefined) {
+        const category = await findCategoryByIdentifier(data.category);
+        if (!category) {
+          throwGraphQLError("Category not found", "NOT_FOUND", 404);
+        }
+        updateData.category = category._id;
+      }
+
+      Object.assign(product, updateData);
 
       await product.save();
       await product.populate("category");
@@ -162,14 +171,14 @@ const productResolvers = {
       requireAdmin(context);
       const { id } = validateArgs(productIdArgsSchema, args);
 
-      const product = await Product.findById(id);
+      const product = await Product.findOne({ shortId: id });
       if (!product) {
         throwGraphQLError("Product not found", "NOT_FOUND", 404);
       }
 
       await Promise.all([
-        Cart.updateMany({}, { $pull: { items: { product: id } } }),
-        Review.deleteMany({ product: id }),
+        Cart.updateMany({}, { $pull: { items: { product: product._id } } }),
+        Review.deleteMany({ product: product._id }),
         product.deleteOne(),
       ]);
       return true;
@@ -178,14 +187,14 @@ const productResolvers = {
       const user = requireAuth(context);
       const data = validateArgs(createReviewArgsSchema, args);
 
-      const product = await Product.findById(data.productId);
+      const product = await Product.findOne({ shortId: data.productId });
       if (!product) {
         throwGraphQLError("Product not found", "NOT_FOUND", 404);
       }
 
       const existingReview = await Review.findOne({
         user: user._id,
-        product: data.productId,
+        product: product._id,
       });
 
       if (existingReview) {
@@ -198,12 +207,12 @@ const productResolvers = {
 
       const review = await Review.create({
         user: user._id,
-        product: data.productId,
+        product: product._id,
         rating: data.rating,
         comment: data.comment,
       });
 
-      await recalculateProductRating(data.productId);
+      await recalculateProductRating(product._id);
       await review.populate("user", "name email role");
       await review.populate({
         path: "product",
@@ -212,6 +221,9 @@ const productResolvers = {
 
       return review;
     },
+  },
+  Product: {
+    id: (product) => product.shortId,
   },
 };
 

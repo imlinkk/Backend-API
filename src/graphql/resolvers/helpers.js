@@ -1,7 +1,12 @@
 const User = require("../../models/User");
 const { verifyToken } = require("../../config/jwt");
 const { throwGraphQLError } = require("../../utils/graphql");
-const { z, objectIdSchema, paginationQuerySchema } = require("../../validations/commonValidation");
+const {
+  z,
+  objectIdSchema,
+  paginationQuerySchema,
+  numericIdSchema,
+} = require("../../validations/commonValidation");
 
 const requireAuth = (context) => {
   if (!context.user) {
@@ -62,7 +67,7 @@ const idArgSchema = z.object({
 const productFilterArgSchema = z.object({
   filter: z
     .object({
-      category: objectIdSchema.optional(),
+      category: objectIdSchema.or(numericIdSchema).optional(),
       minPrice: z.number().min(0).optional(),
       maxPrice: z.number().min(0).optional(),
       search: z.string().trim().optional(),
@@ -85,6 +90,7 @@ module.exports = {
   buildGraphQLContext,
   idArgSchema,
   objectIdSchema,
+  numericIdSchema,
   productFilterArgSchema,
   z,
 };

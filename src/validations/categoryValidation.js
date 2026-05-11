@@ -1,4 +1,4 @@
-const { z, objectIdSchema } = require("./commonValidation");
+const { z, objectIdSchema, numericIdSchema } = require("./commonValidation");
 
 const categoryBody = z.object({
   name: z.string().trim().min(2).max(100),
@@ -16,7 +16,7 @@ const updateCategorySchema = z.object({
     message: "At least one field is required",
   }),
   params: z.object({
-    id: objectIdSchema,
+    id: objectIdSchema.or(numericIdSchema),
   }),
   query: z.object({}).default({}),
 });
@@ -24,7 +24,7 @@ const updateCategorySchema = z.object({
 const categoryIdSchema = z.object({
   body: z.object({}).default({}),
   params: z.object({
-    id: objectIdSchema,
+    id: objectIdSchema.or(numericIdSchema),
   }),
   query: z.object({}).default({}),
 });

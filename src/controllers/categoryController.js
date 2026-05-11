@@ -26,7 +26,8 @@ const createCategory = asyncHandler(async (req, res) => {
 });
 
 const updateCategory = asyncHandler(async (req, res) => {
-  const category = await Category.findById(req.params.id);
+  const id = /^\d+$/.test(req.params.id) ? Number(req.params.id) : req.params.id;
+  const category = typeof id === "number" ? await Category.findOne({ shortId: id }) : await Category.findById(id);
   if (!category) {
     throw new AppError(404, "Category not found");
   }
@@ -51,7 +52,8 @@ const updateCategory = asyncHandler(async (req, res) => {
 });
 
 const deleteCategory = asyncHandler(async (req, res) => {
-  const category = await Category.findById(req.params.id);
+  const id = /^\d+$/.test(req.params.id) ? Number(req.params.id) : req.params.id;
+  const category = typeof id === "number" ? await Category.findOne({ shortId: id }) : await Category.findById(id);
   if (!category) {
     throw new AppError(404, "Category not found");
   }

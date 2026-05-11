@@ -2,6 +2,10 @@ const Cart = require("../models/Cart");
 const Order = require("../models/Order");
 const AppError = require("../utils/AppError");
 const asyncHandler = require("../utils/asyncHandler");
+const {
+  findOrderByIdentifier,
+  getStatusTransitionError,
+} = require("../utils/order");
 const { sendSuccess } = require("../utils/response");
 
 const createOrder = asyncHandler(async (req, res) => {
@@ -48,6 +52,10 @@ const createOrder = asyncHandler(async (req, res) => {
   await cart.save();
 
   await order.populate("user", "name email role");
+  await order.populate({
+    path: "items.product",
+    populate: { path: "category" },
+  });
 
   return sendSuccess(res, 201, "Order created successfully", {
     order,
@@ -59,7 +67,10 @@ const getOrders = asyncHandler(async (req, res) => {
 
   const orders = await Order.find(filter)
     .populate("user", "name email role")
-    .populate("items.product")
+    .populate({
+      path: "items.product",
+      populate: { path: "category" },
+    })
     .sort({ createdAt: -1 });
 
   return sendSuccess(res, 200, "Orders fetched successfully", {
@@ -68,9 +79,12 @@ const getOrders = asyncHandler(async (req, res) => {
 });
 
 const getOrderById = asyncHandler(async (req, res) => {
-  const order = await Order.findById(req.params.id)
+  const order = await findOrderByIdentifier(req.params.id)
     .populate("user", "name email role")
-    .populate("items.product");
+    .populate({
+      path: "items.product",
+      populate: { path: "category" },
+    });
 
   if (!order) {
     throw new AppError(404, "Order not found");
@@ -87,19 +101,27 @@ const getOrderById = asyncHandler(async (req, res) => {
 });
 
 const updateOrderStatus = asyncHandler(async (req, res) => {
-  const order = await Order.findById(req.params.id);
+  const order = await findOrderByIdentifier(req.params.id);
   if (!order) {
     throw new AppError(404, "Order not found");
   }
 
+  const transitionError = getStatusTransitionError(order.status, req.body.status);
+  if (transitionError) {
+    throw new AppError(400, transitionError);
+  }
+
   order.status = req.body.status;
-  if (req.body.status === "delivered") {
+  if (req.body.status === "delivered" && !order.deliveredAt) {
     order.deliveredAt = new Date();
   }
 
   await order.save();
   await order.populate("user", "name email role");
-  await order.populate("items.product");
+  await order.populate({
+    path: "items.product",
+    populate: { path: "category" },
+  });
 
   return sendSuccess(res, 200, "Order status updated successfully", {
     order,

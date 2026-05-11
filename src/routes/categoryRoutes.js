@@ -26,7 +26,7 @@ const router = express.Router();
  *         description: Category list
  *   post:
  *     tags: [Categories]
- *     summary: Create a category
+ *     summary: Create a category (admin)
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -57,15 +57,20 @@ router.post("/", protect, adminOnly, validate(createCategorySchema), createCateg
  * /api/categories/{id}:
  *   put:
  *     tags: [Categories]
- *     summary: Update a category
+ *     summary: Update a category (admin)
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
+ *         description: Numeric category id is preferred, for example 1.
  *         schema:
- *           type: string
+ *           oneOf:
+ *             - type: integer
+ *               example: 1
+ *             - type: string
+ *               example: "6658ca5ffbd0af6d9bf2f111"
  *     requestBody:
  *       required: true
  *       content:
@@ -80,22 +85,35 @@ router.post("/", protect, adminOnly, validate(createCategorySchema), createCateg
  *     responses:
  *       200:
  *         description: Category updated
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
  *   delete:
  *     tags: [Categories]
- *     summary: Delete a category
+ *     summary: Delete a category (admin)
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
+ *         description: Numeric category id is preferred, for example 1.
  *         schema:
- *           type: string
+ *           oneOf:
+ *             - type: integer
+ *               example: 1
+ *             - type: string
+ *               example: "6658ca5ffbd0af6d9bf2f111"
  *     responses:
  *       200:
  *         description: Category deleted
  *       400:
  *         description: Cannot delete category with products
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
  */
 router.put("/:id", protect, adminOnly, validate(updateCategorySchema), updateCategory);
 router.delete("/:id", protect, adminOnly, validate(categoryIdSchema), deleteCategory);

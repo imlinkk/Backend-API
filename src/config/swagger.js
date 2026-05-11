@@ -67,7 +67,7 @@ const options = {
         Category: {
           type: "object",
           properties: {
-            _id: { type: "string" },
+            id: { type: "integer", example: 1 },
             name: { type: "string", example: "Electronics" },
             slug: { type: "string", example: "electronics" },
             description: {
@@ -79,7 +79,7 @@ const options = {
         Product: {
           type: "object",
           properties: {
-            _id: { type: "string" },
+            id: { type: "integer", example: 1 },
             name: { type: "string", example: "Mechanical Keyboard" },
             slug: { type: "string", example: "mechanical-keyboard" },
             description: { type: "string" },
@@ -118,7 +118,7 @@ const options = {
         OrderItem: {
           type: "object",
           properties: {
-            product: { type: "string" },
+            product: { $ref: "#/components/schemas/Product" },
             name: { type: "string", example: "Mechanical Keyboard" },
             price: { type: "number", example: 89.99 },
             quantity: { type: "integer", example: 2 },
@@ -127,7 +127,7 @@ const options = {
         Order: {
           type: "object",
           properties: {
-            _id: { type: "string" },
+            id: { type: "integer", example: 1 },
             user: { type: "string" },
             items: {
               type: "array",

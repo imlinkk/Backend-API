@@ -49,8 +49,13 @@ router.post("/", protect, createOrder);
  *       - in: path
  *         name: id
  *         required: true
+ *         description: Numeric order id is preferred, for example 1.
  *         schema:
- *           type: string
+ *           oneOf:
+ *             - type: integer
+ *               example: 1
+ *             - type: string
+ *               example: "6658ca5ffbd0af6d9bf2f111"
  *     responses:
  *       200:
  *         description: Order fetched
@@ -66,15 +71,20 @@ router.get("/:id", protect, validate(orderIdSchema), getOrderById);
  * /api/orders/{id}/status:
  *   put:
  *     tags: [Orders]
- *     summary: Update order status
+ *     summary: Update order status (admin)
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
+ *         description: Numeric order id is preferred, for example 1.
  *         schema:
- *           type: string
+ *           oneOf:
+ *             - type: integer
+ *               example: 1
+ *             - type: string
+ *               example: "6658ca5ffbd0af6d9bf2f111"
  *     requestBody:
  *       required: true
  *       content:
@@ -89,6 +99,14 @@ router.get("/:id", protect, validate(orderIdSchema), getOrderById);
  *     responses:
  *       200:
  *         description: Order status updated
+ *       400:
+ *         description: Invalid status transition
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Order not found
  */
 router.put(
   "/:id/status",

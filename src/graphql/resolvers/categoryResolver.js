@@ -1,6 +1,7 @@
 const Category = require("../../models/Category");
 const Product = require("../../models/Product");
 const { requireAdmin, validateArgs, idArgSchema, z } = require("./helpers");
+const { numericIdSchema } = require("../../validations/commonValidation");
 const { throwGraphQLError } = require("../../utils/graphql");
 
 const createCategoryArgsSchema = z.object({
@@ -8,9 +9,13 @@ const createCategoryArgsSchema = z.object({
   description: z.string().trim().max(300).optional().default(""),
 });
 
+const categoryIdArgsSchema = z.object({
+  id: idArgSchema.shape.id.or(numericIdSchema),
+});
+
 const updateCategoryArgsSchema = z
   .object({
-    id: idArgSchema.shape.id,
+    id: categoryIdArgsSchema.shape.id,
     name: z.string().trim().min(2).max(100).optional(),
     description: z.string().trim().max(300).optional(),
   })
@@ -38,7 +43,7 @@ const categoryResolvers = {
       requireAdmin(context);
       const data = validateArgs(updateCategoryArgsSchema, args);
 
-      const category = await Category.findById(data.id);
+      const category = typeof data.id === "number" ? await Category.findOne({ shortId: data.id }) : await Category.findById(data.id);
       if (!category) {
         throwGraphQLError("Category not found", "NOT_FOUND", 404);
       }
@@ -60,14 +65,12 @@ const categoryResolvers = {
     },
     deleteCategory: async (parent, args, context) => {
       requireAdmin(context);
-      const { id } = validateArgs(idArgSchema, args);
-
-      const category = await Category.findById(id);
+      const { id } = validateArgs(categoryIdArgsSchema, args);
+      const category = typeof id === "number" ? await Category.findOne({ shortId: id }) : await Category.findById(id);
       if (!category) {
         throwGraphQLError("Category not found", "NOT_FOUND", 404);
       }
-
-      const productCount = await Product.countDocuments({ category: id });
+      const productCount = await Product.countDocuments({ category: category._id });
       if (productCount > 0) {
         throwGraphQLError(
           "Cannot delete category with existing products",
@@ -79,6 +82,9 @@ const categoryResolvers = {
       await category.deleteOne();
       return true;
     },
+  },
+  Category: {
+    id: (category) => category.shortId,
   },
 };
 

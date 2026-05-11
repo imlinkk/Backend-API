@@ -1,8 +1,8 @@
 const productTypeDefs = `#graphql
   extend type Query {
     products(filter: ProductFilterInput, pagination: PaginationInput): ProductPage!
-    product(id: ID!): Product!
-    productReviews(productId: ID!): [Review!]!
+    product(id: Int!): Product!
+    productReviews(productId: Int!): [Review!]!
   }
 
   extend type Mutation {
@@ -11,20 +11,20 @@ const productTypeDefs = `#graphql
       description: String!
       price: Float!
       stock: Int!
-      category: ID!
+      category: Int!
       images: [String!]
     ): Product!
     updateProduct(
-      id: ID!
+      id: Int!
       name: String
       description: String
       price: Float
       stock: Int
-      category: ID
+      category: Int
       images: [String!]
     ): Product!
-    deleteProduct(id: ID!): Boolean!
-    createReview(productId: ID!, rating: Int!, comment: String!): Review!
+    deleteProduct(id: Int!): Boolean!
+    createReview(productId: Int!, rating: Int!, comment: String!): Review!
   }
 `;
 

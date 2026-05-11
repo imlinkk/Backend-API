@@ -14,7 +14,7 @@ const baseTypeDefs = `#graphql
   }
 
   type Category {
-    id: ID!
+    id: Int!
     name: String!
     slug: String!
     description: String
@@ -23,7 +23,7 @@ const baseTypeDefs = `#graphql
   }
 
   type Product {
-    id: ID!
+    id: Int!
     name: String!
     slug: String!
     description: String!
@@ -94,7 +94,7 @@ const baseTypeDefs = `#graphql
   }
 
   input ProductFilterInput {
-    category: ID
+    category: Int
     minPrice: Float
     maxPrice: Float
     search: String

@@ -6,6 +6,7 @@ const Product = require("../src/models/Product");
 const Cart = require("../src/models/Cart");
 const Order = require("../src/models/Order");
 const Review = require("../src/models/Review");
+const Counter = require("../src/models/Counter");
 
 const seed = async () => {
   try {
@@ -18,6 +19,7 @@ const seed = async () => {
       Product.deleteMany({}),
       Category.deleteMany({}),
       User.deleteMany({}),
+      Counter.deleteMany({}),
     ]);
 
     const admin = await User.create({
@@ -34,7 +36,7 @@ const seed = async () => {
       role: "user",
     });
 
-    const categories = await Category.insertMany([
+    const categorySeeds = [
       {
         name: "Electronics",
         description: "Devices, accessories, and tech products",
@@ -47,9 +49,14 @@ const seed = async () => {
         name: "Home & Living",
         description: "Furniture and home improvement items",
       },
-    ]);
+    ];
 
-    const products = await Product.insertMany([
+    const categories = [];
+    for (const categoryData of categorySeeds) {
+      categories.push(await Category.create(categoryData));
+    }
+
+    const productSeeds = [
       {
         name: "Wireless Headphones Pro",
         description:
@@ -83,7 +90,12 @@ const seed = async () => {
           "https://images.unsplash.com/photo-1517705008128-361805f42e86",
         ],
       },
-    ]);
+    ];
+
+    const products = [];
+    for (const productData of productSeeds) {
+      products.push(await Product.create(productData));
+    }
 
     console.log("Seed completed successfully.");
     console.log("Admin:", admin.email, "/ Admin@123");

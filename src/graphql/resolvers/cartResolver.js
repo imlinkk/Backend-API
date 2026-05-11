@@ -2,15 +2,16 @@ const Cart = require("../../models/Cart");
 const Product = require("../../models/Product");
 const { calculateCartTotals } = require("../../utils/cart");
 const { requireAuth, validateArgs, objectIdSchema, z } = require("./helpers");
+const { numericIdSchema } = require("../../validations/commonValidation");
 const { throwGraphQLError } = require("../../utils/graphql");
 
 const cartItemArgsSchema = z.object({
-  productId: objectIdSchema,
+  productId: objectIdSchema.or(numericIdSchema),
   quantity: z.number().int().min(1),
 });
 
 const cartIdArgsSchema = z.object({
-  productId: objectIdSchema,
+  productId: objectIdSchema.or(numericIdSchema),
 });
 
 const getOrCreateCart = async (userId) => {
@@ -49,7 +50,8 @@ const cartResolvers = {
     addToCart: async (parent, args, context) => {
       const user = requireAuth(context);
       const data = validateArgs(cartItemArgsSchema, args);
-      const product = await Product.findById(data.productId);
+      const pid = typeof data.productId === "number" ? data.productId : data.productId;
+      const product = typeof pid === "number" ? await Product.findOne({ shortId: pid }) : await Product.findById(pid);
 
       if (!product) {
         throwGraphQLError("Product not found", "NOT_FOUND", 404);
@@ -57,7 +59,7 @@ const cartResolvers = {
 
       const cart = await getOrCreateCart(user._id);
       const existingItem = cart.items.find(
-        (item) => item.product._id.toString() === data.productId
+        (item) => item.product._id.equals(product._id) || item.product.shortId === product.shortId
       );
 
       const nextQuantity = existingItem
@@ -89,7 +91,8 @@ const cartResolvers = {
     updateCartItem: async (parent, args, context) => {
       const user = requireAuth(context);
       const data = validateArgs(cartItemArgsSchema, args);
-      const product = await Product.findById(data.productId);
+      const pid = typeof data.productId === "number" ? data.productId : data.productId;
+      const product = typeof pid === "number" ? await Product.findOne({ shortId: pid }) : await Product.findById(pid);
 
       if (!product) {
         throwGraphQLError("Product not found", "NOT_FOUND", 404);
@@ -105,7 +108,7 @@ const cartResolvers = {
 
       const cart = await getOrCreateCart(user._id);
       const existingItem = cart.items.find(
-        (item) => item.product._id.toString() === data.productId
+        (item) => item.product._id.equals(product._id) || item.product.shortId === product.shortId
       );
 
       if (!existingItem) {
@@ -124,9 +127,11 @@ const cartResolvers = {
 
       const cart = await getOrCreateCart(user._id);
       const initialLength = cart.items.length;
-      cart.items = cart.items.filter(
-        (item) => item.product._id.toString() !== productId
-      );
+      const paramPid = typeof productId === "number" ? productId : productId;
+      cart.items = cart.items.filter((item) => {
+        if (typeof paramPid === "number") return item.product.shortId !== paramPid;
+        return item.product._id.toString() !== paramPid;
+      });
 
       if (cart.items.length === initialLength) {
         throwGraphQLError("Cart item not found", "NOT_FOUND", 404);
