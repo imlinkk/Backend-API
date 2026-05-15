@@ -85,6 +85,14 @@ const router = express.Router();
  *                 type: array
  *                 items:
  *                   type: string
+ *             example:
+ *               name: "Vong tay"
+ *               description: "Vong tay bac cao cap"
+ *               price: 15
+ *               stock: 200
+ *               category: 1
+ *               images:
+ *                 - "https://example.com/vong-tay.jpg"
  *     responses:
  *       201:
  *         description: Product created
@@ -140,6 +148,30 @@ router.post("/", protect, adminOnly, validate(createProductSchema), createProduc
  *         application/json:
  *           schema:
  *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *               stock:
+ *                 type: integer
+ *               category:
+ *                 oneOf:
+ *                   - type: integer
+ *                   - type: string
+ *               images:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *             example:
+ *               name: "Vong tay bac"
+ *               price: 20
+ *               stock: 300
+ *               category: 1
+ *               images:
+ *                 - "https://example.com/vong-tay-bac.jpg"
  *     responses:
  *       200:
  *         description: Product updated
@@ -223,6 +255,9 @@ router.delete("/:id", protect, adminOnly, validate(productIdSchema), deleteProdu
  *                 type: integer
  *               comment:
  *                 type: string
+ *             example:
+ *               rating: 5
+ *               comment: "San pham tot"
  *     responses:
  *       201:
  *         description: Review created

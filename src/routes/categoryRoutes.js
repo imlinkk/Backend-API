@@ -41,6 +41,9 @@ const router = express.Router();
  *                 type: string
  *               description:
  *                 type: string
+ *             example:
+ *               name: "Phu kien"
+ *               description: "Phu kien va trang suc"
  *     responses:
  *       201:
  *         description: Category created
@@ -82,6 +85,9 @@ router.post("/", protect, adminOnly, validate(createCategorySchema), createCateg
  *                 type: string
  *               description:
  *                 type: string
+ *             example:
+ *               name: "Phu kien thoi trang"
+ *               description: "Phu kien, trang suc va qua tang"
  *     responses:
  *       200:
  *         description: Category updated
